@@ -150,7 +150,7 @@ func (d classData) getWordsProb(words []string) (prob float64) {
 // NewClassifierTfIdf returns a new classifier. The classes provided
 // should be at least 2 in number and unique, or this method will
 // panic.
-func NewClassifierTfIdf(classes ...Class) (c *Classifier) {
+func NewClassifierTfIdf(classes ...Class) (c Classifier) {
 	n := len(classes)
 
 	// check size
@@ -167,7 +167,7 @@ func NewClassifierTfIdf(classes ...Class) (c *Classifier) {
 		panic("classes must be unique")
 	}
 	// create the classifier
-	c = &Classifier{
+	c = Classifier{
 		Classes: classes,
 		datas:   make(map[Class]classData, n),
 		tfIdf:   true,
@@ -181,7 +181,7 @@ func NewClassifierTfIdf(classes ...Class) (c *Classifier) {
 // NewClassifier returns a new classifier. The classes provided
 // should be at least 2 in number and unique, or this method will
 // panic.
-func NewClassifier(classes ...Class) (c *Classifier) {
+func NewClassifier(classes ...Class) (c Classifier) {
 	n := len(classes)
 
 	// check size
@@ -198,7 +198,7 @@ func NewClassifier(classes ...Class) (c *Classifier) {
 		panic("classes must be unique")
 	}
 	// create the classifier
-	c = &Classifier{
+	c = Classifier{
 		Classes:         classes,
 		datas:           make(map[Class]classData, n),
 		tfIdf:           false,
@@ -213,21 +213,21 @@ func NewClassifier(classes ...Class) (c *Classifier) {
 // NewClassifierFromFile loads an existing classifier from
 // file. The classifier was previously saved with a call
 // to c.WriteToFile(string).
-func NewClassifierFromFile(name string) (c *Classifier, err error) {
+func NewClassifierFromFile(name string) (c Classifier, err error) {
 	file, err := os.Open(name)
 	if err != nil {
-		return nil, err
+		return Classifier{}, err
 	}
 	return NewClassifierFromReader(file)
 }
 
 //This actually does the deserializing of a Gob encoded classifier
-func NewClassifierFromReader(r io.Reader) (c *Classifier, err error) {
+func NewClassifierFromReader(r io.Reader) (c Classifier, err error) {
 	dec := gob.NewDecoder(r)
 	w := new(serializableClassifier)
 	err = dec.Decode(w)
 
-	return &Classifier{w.Classes, w.Learned, int32(w.Seen), w.Datas, w.TfIdf, w.DidConvertTfIdf}, err
+	return Classifier{w.Classes, w.Learned, int32(w.Seen), w.Datas, w.TfIdf, w.DidConvertTfIdf}, err
 }
 
 // getPriors returns the prior probabilities for the
