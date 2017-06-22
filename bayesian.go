@@ -123,6 +123,20 @@ func newClassData() classData {
 	}
 }
 
+func (cd classData) clone() classData {
+	ret := newClassData()
+	ret.Total = cd.Total
+	for key, value := range cd.Freqs {
+		ret.Freqs[key] = value
+	}
+
+	for key, value := range cd.FreqTfs {
+		ret.FreqTfs[key] = value
+	}
+
+	return ret
+}
+
 // getWordProb returns P(W|C_j) -- the probability of seeing
 // a particular word W in a document of this class.
 func (d classData) getWordProb(word string) float64 {
@@ -233,7 +247,7 @@ func NewClassifierFromReader(r io.Reader) (c Classifier, err error) {
 func (c *Classifier) cloned() {
 	d := make(map[Class]classData)
 	for key, value := range c.datas {
-		d[key] = value
+		d[key] = value.clone()
 	}
 
 	c.datas = d
