@@ -221,7 +221,7 @@ func NewClassifierFromFile(name string) (c Classifier, err error) {
 	return NewClassifierFromReader(file)
 }
 
-//This actually does the deserializing of a Gob encoded classifier
+// NewClassifierFromReader actually does the deserializing of a Gob encoded classifier
 func NewClassifierFromReader(r io.Reader) (c Classifier, err error) {
 	dec := gob.NewDecoder(r)
 	w := new(serializableClassifier)
@@ -235,7 +235,7 @@ func NewClassifierFromReader(r io.Reader) (c Classifier, err error) {
 //
 // TODO: There is a way to smooth priors, currently
 // not implemented here.
-func (c *Classifier) getPriors() (priors []float64) {
+func (c Classifier) getPriors() (priors []float64) {
 	n := len(c.Classes)
 	priors = make([]float64, n, n)
 	sum := 0
@@ -254,24 +254,24 @@ func (c *Classifier) getPriors() (priors []float64) {
 
 // Learned returns the number of documents ever learned
 // in the lifetime of this classifier.
-func (c *Classifier) Learned() int {
+func (c Classifier) Learned() int {
 	return c.learned
 }
 
 // Seen returns the number of documents ever classified
 // in the lifetime of this classifier.
-func (c *Classifier) Seen() int {
+func (c Classifier) Seen() int {
 	return int(atomic.LoadInt32(&c.seen))
 }
 
-// Returns if we are a classifier of type TfIdf
-func (c *Classifier) IsTfIdf() bool {
+// IsTfIdf Returns if we are a classifier of type TfIdf
+func (c Classifier) IsTfIdf() bool {
 	return c.tfIdf
 }
 
 // WordCount returns the number of words counted for
 // each class in the lifetime of the classifier.
-func (c *Classifier) WordCount() (result []int) {
+func (c Classifier) WordCount() (result []int) {
 	result = make([]int, len(c.Classes))
 	for inx, class := range c.Classes {
 		result[inx] = c.datas[class].Total
@@ -281,17 +281,18 @@ func (c *Classifier) WordCount() (result []int) {
 
 // Observe should be used when word-frequencies have been already been learned
 // externally (e.g., hadoop)
-func (c *Classifier) Observe(word string, count int, which Class) {
+func (c Classifier) Observe(word string, count int, which Class) Classifier {
 	c.datas[which].Freqs[word] += float64(count)
 	data := c.datas[which]
 	data.Total += count
 	c.datas[which] = data
+
+	return c
 }
 
 // Learn will accept new training documents for
 // supervised learning.
-func (c *Classifier) Learn(document []string, which Class) {
-
+func (c Classifier) Learn(document []string, which Class) Classifier {
 	// If we are a tfidf classifier we first need to get terms as
 	// terms frequency and store that to work out the idf part later
 	// in ConvertToIDF().
@@ -323,24 +324,24 @@ func (c *Classifier) Learn(document []string, which Class) {
 		c.datas[which] = data
 	}
 	c.learned++
+
+	return c
 }
 
-// Here we use all the TF samples for the class and convert
+// ConvertTermsFreqToTfIdf uses all the TF samples for the class and converts
 // them to TF-IDF https://en.wikipedia.org/wiki/Tf%E2%80%93idf
 // once we have finished learning all the classes and have the totals.
-func (c *Classifier) ConvertTermsFreqToTfIdf() {
+func (c Classifier) ConvertTermsFreqToTfIdf() Classifier {
 
 	if c.DidConvertTfIdf {
 		panic("Cannot call ConvertTermsFreqToTfIdf more than once. Reset and relearn to reconvert.")
 	}
 
-	for className, _ := range c.datas {
-
-		for wIndex, _ := range c.datas[className].FreqTfs {
+	for className := range c.datas {
+		for wIndex := range c.datas[className].FreqTfs {
 			tfIdfAdder := float64(0)
 
-			for tfSampleIndex, _ := range c.datas[className].FreqTfs[wIndex] {
-
+			for tfSampleIndex := range c.datas[className].FreqTfs[wIndex] {
 				// we always want a possitive TF-IDF score.
 				tf := c.datas[className].FreqTfs[wIndex][tfSampleIndex]
 				c.datas[className].FreqTfs[wIndex][tfSampleIndex] = math.Log1p(tf) * math.Log1p(float64(c.learned)/float64(c.datas[className].Total))
@@ -354,7 +355,7 @@ func (c *Classifier) ConvertTermsFreqToTfIdf() {
 
 	// sanity check
 	c.DidConvertTfIdf = true
-
+	return c
 }
 
 // LogScores produces "log-likelihood"-like scores that can
@@ -376,7 +377,7 @@ func (c *Classifier) ConvertTermsFreqToTfIdf() {
 //
 // Unlike c.Probabilities(), this function is not prone to
 // floating point underflow and is relatively safe to use.
-func (c *Classifier) LogScores(document []string) (scores []float64, inx int, strict bool) {
+func (c Classifier) LogScores(document []string) (scores []float64, inx int, strict bool) {
 	if c.tfIdf && !c.DidConvertTfIdf {
 		panic("Using a TF-IDF classifier. Please call ConvertTermsFreqToTfIdf before calling LogScores.")
 	}
@@ -411,7 +412,7 @@ func (c *Classifier) LogScores(document []string) (scores []float64, inx int, st
 // never seen before. Depending on the application, this
 // may or may not be a concern. Consider using SafeProbScores()
 // instead.
-func (c *Classifier) ProbScores(doc []string) (scores []float64, inx int, strict bool) {
+func (c Classifier) ProbScores(doc []string) (scores []float64, inx int, strict bool) {
 	if c.tfIdf && !c.DidConvertTfIdf {
 		panic("Using a TF-IDF classifier. Please call ConvertTermsFreqToTfIdf before calling ProbScores.")
 	}
@@ -450,7 +451,7 @@ func (c *Classifier) ProbScores(doc []string) (scores []float64, inx int, strict
 //
 // Underflow detection is more costly because it also
 // has to make additional log score calculations.
-func (c *Classifier) SafeProbScores(doc []string) (scores []float64, inx int, strict bool, err error) {
+func (c Classifier) SafeProbScores(doc []string) (scores []float64, inx int, strict bool, err error) {
 	if c.tfIdf && !c.DidConvertTfIdf {
 		panic("Using a TF-IDF classifier. Please call ConvertTermsFreqToTfIdf before calling SafeProbScores.")
 	}
@@ -500,13 +501,13 @@ func (c *Classifier) SafeProbScores(doc []string) (scores []float64, inx int, st
 //
 // then the expression freq[i][j] represents the frequency of the j-th
 // word within the i-th class.
-func (c *Classifier) WordFrequencies(words []string) (freqMatrix [][]float64) {
+func (c Classifier) WordFrequencies(words []string) (freqMatrix [][]float64) {
 	n, l := len(c.Classes), len(words)
 	freqMatrix = make([][]float64, n)
-	for i, _ := range freqMatrix {
+	for i := range freqMatrix {
 		arr := make([]float64, l)
 		data := c.datas[c.Classes[i]]
-		for j, _ := range arr {
+		for j := range arr {
 			arr[j] = data.getWordProb(words[j])
 		}
 		freqMatrix[i] = arr
@@ -516,7 +517,7 @@ func (c *Classifier) WordFrequencies(words []string) (freqMatrix [][]float64) {
 
 // WordsByClass returns a map of words and their probability of
 // appearing in the given class.
-func (c *Classifier) WordsByClass(class Class) (freqMap map[string]float64) {
+func (c Classifier) WordsByClass(class Class) (freqMap map[string]float64) {
 	freqMap = make(map[string]float64)
 	for word, cnt := range c.datas[class].Freqs {
 		freqMap[word] = float64(cnt) / float64(c.datas[class].Total)
@@ -525,8 +526,8 @@ func (c *Classifier) WordsByClass(class Class) (freqMap map[string]float64) {
 	return freqMap
 }
 
-// Serialize this classifier to a file.
-func (c *Classifier) WriteToFile(name string) (err error) {
+// WriteToFile serializes this classifier to a file.
+func (c Classifier) WriteToFile(name string) (err error) {
 	file, err := os.OpenFile(name, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		return err
@@ -535,14 +536,14 @@ func (c *Classifier) WriteToFile(name string) (err error) {
 }
 
 // WriteClassesToFile writes all classes to files.
-func (c *Classifier) WriteClassesToFile(rootPath string) (err error) {
-	for name, _ := range c.datas {
+func (c Classifier) WriteClassesToFile(rootPath string) (err error) {
+	for name := range c.datas {
 		c.WriteClassToFile(name, rootPath)
 	}
 	return
 }
 
-func (c *Classifier) WriteClassToFile(name Class, rootPath string) (err error) {
+func (c Classifier) WriteClassToFile(name Class, rootPath string) (err error) {
 	data := c.datas[name]
 	fileName := filepath.Join(rootPath, string(name))
 	file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE, 0644)
@@ -554,8 +555,8 @@ func (c *Classifier) WriteClassToFile(name Class, rootPath string) (err error) {
 	return
 }
 
-// Serialize this classifier to GOB and write to Writer.
-func (c *Classifier) WriteTo(w io.Writer) (err error) {
+// WriteTo serializes this classifier to GOB and write to Writer.
+func (c Classifier) WriteTo(w io.Writer) (err error) {
 	enc := gob.NewEncoder(w)
 	err = enc.Encode(&serializableClassifier{c.Classes, c.learned, int(c.seen), c.datas, c.tfIdf, c.DidConvertTfIdf})
 
@@ -564,12 +565,12 @@ func (c *Classifier) WriteTo(w io.Writer) (err error) {
 
 // ReadClassFromFile loads existing class data from a
 // file.
-func (c *Classifier) ReadClassFromFile(class Class, location string) (err error) {
+func (c Classifier) ReadClassFromFile(class Class, location string) (Classifier, error) {
 	fileName := filepath.Join(location, string(class))
 	file, err := os.Open(fileName)
 
 	if err != nil {
-		return err
+		return c, err
 	}
 
 	dec := gob.NewDecoder(file)
@@ -578,7 +579,7 @@ func (c *Classifier) ReadClassFromFile(class Class, location string) (err error)
 
 	c.learned++
 	c.datas[class] = w
-	return
+	return c, err
 }
 
 // findMax finds the maximum of a set of scores; if the
