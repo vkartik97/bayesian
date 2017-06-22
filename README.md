@@ -54,8 +54,8 @@ const (
 classifier := NewClassifier(Good, Bad)
 goodStuff := []string{"tall", "rich", "handsome"}
 badStuff  := []string{"poor", "smelly", "ugly"}
-classifier.Learn(goodStuff, Good)
-classifier.Learn(badStuff,  Bad)
+classifier = classifier.Learn(goodStuff, Good)
+classifier = classifier.Learn(badStuff,  Bad)
 ```
 Then you can ascertain the scores of each class and
 the most likely class your data belongs to:
@@ -93,11 +93,11 @@ classifier := NewClassifierTfIdf(Good, Bad)
 goodStuff := []string{"tall", "rich", "handsome"}
 badStuff  := []string{"poor", "smelly", "ugly"}
 
-classifier.Learn(goodStuff, Good)
-classifier.Learn(badStuff,  Bad)
+classifier = classifier.Learn(goodStuff, Good)
+classifier = classifier.Learn(badStuff,  Bad)
 
 // Required
-classifier.ConvertTermsFreqToTfIdf()
+classifier = classifier.ConvertTermsFreqToTfIdf()
 ```
 
 Then you can ascertain the scores of each class and
