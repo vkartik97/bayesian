@@ -230,6 +230,15 @@ func NewClassifierFromReader(r io.Reader) (c Classifier, err error) {
 	return Classifier{w.Classes, w.Learned, int32(w.Seen), w.Datas, w.TfIdf, w.DidConvertTfIdf}, err
 }
 
+func (c *Classifier) cloned() {
+	d := make(map[Class]classData)
+	for key, value := range c.datas {
+		d[key] = value
+	}
+
+	c.datas = d
+}
+
 // getPriors returns the prior probabilities for the
 // classes provided -- P(C_j).
 //
@@ -282,6 +291,7 @@ func (c Classifier) WordCount() (result []int) {
 // Observe should be used when word-frequencies have been already been learned
 // externally (e.g., hadoop)
 func (c Classifier) Observe(word string, count int, which Class) Classifier {
+	c.cloned()
 	c.datas[which].Freqs[word] += float64(count)
 	data := c.datas[which]
 	data.Total += count
@@ -293,6 +303,7 @@ func (c Classifier) Observe(word string, count int, which Class) Classifier {
 // Learn will accept new training documents for
 // supervised learning.
 func (c Classifier) Learn(document []string, which Class) Classifier {
+	c.cloned()
 	// If we are a tfidf classifier we first need to get terms as
 	// terms frequency and store that to work out the idf part later
 	// in ConvertToIDF().
@@ -332,7 +343,7 @@ func (c Classifier) Learn(document []string, which Class) Classifier {
 // them to TF-IDF https://en.wikipedia.org/wiki/Tf%E2%80%93idf
 // once we have finished learning all the classes and have the totals.
 func (c Classifier) ConvertTermsFreqToTfIdf() Classifier {
-
+	c.cloned()
 	if c.DidConvertTfIdf {
 		panic("Cannot call ConvertTermsFreqToTfIdf more than once. Reset and relearn to reconvert.")
 	}
@@ -566,6 +577,7 @@ func (c Classifier) WriteTo(w io.Writer) (err error) {
 // ReadClassFromFile loads existing class data from a
 // file.
 func (c Classifier) ReadClassFromFile(class Class, location string) (Classifier, error) {
+	c.cloned()
 	fileName := filepath.Join(location, string(class))
 	file, err := os.Open(fileName)
 
