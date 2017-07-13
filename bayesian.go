@@ -91,6 +91,7 @@ type Classifier struct {
 	tfIdf           bool
 	DidConvertTfIdf bool // we can't classify a TF-IDF classifier if we haven't yet
 	// called ConverTermsFreqToTfIdf
+	EqualPriors bool // should priors be equal for all classes or based on the training data.
 }
 
 // serializableClassifier represents a container for
@@ -103,6 +104,7 @@ type serializableClassifier struct {
 	Datas           map[Class]classData
 	TfIdf           bool
 	DidConvertTfIdf bool
+	EqualPriors     bool
 }
 
 // classData holds the frequency data for words in a
@@ -164,7 +166,7 @@ func (d classData) getWordsProb(words []string) (prob float64) {
 // NewClassifierTfIdf returns a new classifier. The classes provided
 // should be at least 2 in number and unique, or this method will
 // panic.
-func NewClassifierTfIdf(classes ...Class) (c Classifier) {
+func NewClassifierTfIdf(equalPriors bool, classes ...Class) (c Classifier) {
 	n := len(classes)
 
 	// check size
@@ -182,9 +184,10 @@ func NewClassifierTfIdf(classes ...Class) (c Classifier) {
 	}
 	// create the classifier
 	c = Classifier{
-		Classes: classes,
-		datas:   make(map[Class]classData, n),
-		tfIdf:   true,
+		Classes:     classes,
+		datas:       make(map[Class]classData, n),
+		tfIdf:       true,
+		EqualPriors: equalPriors,
 	}
 	for _, class := range classes {
 		c.datas[class] = newClassData()
@@ -195,7 +198,7 @@ func NewClassifierTfIdf(classes ...Class) (c Classifier) {
 // NewClassifier returns a new classifier. The classes provided
 // should be at least 2 in number and unique, or this method will
 // panic.
-func NewClassifier(classes ...Class) (c Classifier) {
+func NewClassifier(equalPriors bool, classes ...Class) (c Classifier) {
 	n := len(classes)
 
 	// check size
@@ -217,6 +220,7 @@ func NewClassifier(classes ...Class) (c Classifier) {
 		datas:           make(map[Class]classData, n),
 		tfIdf:           false,
 		DidConvertTfIdf: false,
+		EqualPriors:     equalPriors,
 	}
 	for _, class := range classes {
 		c.datas[class] = newClassData()
@@ -241,7 +245,7 @@ func NewClassifierFromReader(r io.Reader) (c Classifier, err error) {
 	w := new(serializableClassifier)
 	err = dec.Decode(w)
 
-	return Classifier{w.Classes, w.Learned, int32(w.Seen), w.Datas, w.TfIdf, w.DidConvertTfIdf}, err
+	return Classifier{w.Classes, w.Learned, int32(w.Seen), w.Datas, w.TfIdf, w.DidConvertTfIdf, w.EqualPriors}, err
 }
 
 func (c *Classifier) cloned() {
@@ -262,16 +266,23 @@ func (c Classifier) getPriors() (priors []float64) {
 	n := len(c.Classes)
 	priors = make([]float64, n, n)
 	sum := 0
-	for index, class := range c.Classes {
-		total := c.datas[class].Total
-		priors[index] = float64(total)
-		sum += total
-	}
-	if sum != 0 {
-		for i := 0; i < n; i++ {
-			priors[i] /= float64(sum)
+	if c.EqualPriors {
+		for i := range priors {
+			priors[i] = 1 / float64(n)
+		}
+	} else {
+		for index, class := range c.Classes {
+			total := c.datas[class].Total
+			priors[index] = float64(total)
+			sum += total
+		}
+		if sum != 0 {
+			for i := 0; i < n; i++ {
+				priors[i] /= float64(sum)
+			}
 		}
 	}
+
 	return
 }
 
@@ -583,7 +594,7 @@ func (c Classifier) WriteClassToFile(name Class, rootPath string) (err error) {
 // WriteTo serializes this classifier to GOB and write to Writer.
 func (c Classifier) WriteTo(w io.Writer) (err error) {
 	enc := gob.NewEncoder(w)
-	err = enc.Encode(&serializableClassifier{c.Classes, c.learned, int(c.seen), c.datas, c.tfIdf, c.DidConvertTfIdf})
+	err = enc.Encode(&serializableClassifier{c.Classes, c.learned, int(c.seen), c.datas, c.tfIdf, c.DidConvertTfIdf, c.EqualPriors})
 
 	return
 }
