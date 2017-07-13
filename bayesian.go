@@ -265,12 +265,12 @@ func (c *Classifier) cloned() {
 func (c Classifier) getPriors() (priors []float64) {
 	n := len(c.Classes)
 	priors = make([]float64, n, n)
-	sum := 0
 	if c.EqualPriors {
 		for i := range priors {
 			priors[i] = 1 / float64(n)
 		}
 	} else {
+		sum := 0
 		for index, class := range c.Classes {
 			total := c.datas[class].Total
 			priors[index] = float64(total)
