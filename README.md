@@ -50,10 +50,9 @@ import . "bayesian"
 const (
     Good Class = "Good"
     Bad Class = "Bad"
-    EqualPriors = true
 )
 
-classifier := NewClassifier(EqualPriors, Good, Bad)
+classifier := NewClassifier(Good, Bad)
 goodStuff := []string{"tall", "rich", "handsome"}
 badStuff  := []string{"poor", "smelly", "ugly"}
 classifier = classifier.Learn(goodStuff, Good)
@@ -86,12 +85,11 @@ import . "bayesian"
 
 const (
     Good Class = "Good"
-    Bad Class = "Bad"
-    EqualPriors = false    
+    Bad Class = "Bad" 
 )
 
 // Create a classifier with TF-IDF support.
-classifier := NewClassifierTfIdf(EqualPriors, Good, Bad)
+classifier := NewClassifierTfIdf(Good, Bad)
 
 goodStuff := []string{"tall", "rich", "handsome"}
 badStuff  := []string{"poor", "smelly", "ugly"}

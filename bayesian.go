@@ -166,7 +166,7 @@ func (d classData) getWordsProb(words []string) (prob float64) {
 // NewClassifierTfIdf returns a new classifier. The classes provided
 // should be at least 2 in number and unique, or this method will
 // panic.
-func NewClassifierTfIdf(equalPriors bool, classes ...Class) (c Classifier) {
+func NewClassifierTfIdf(classes ...Class) (c Classifier) {
 	n := len(classes)
 
 	// check size
@@ -184,10 +184,9 @@ func NewClassifierTfIdf(equalPriors bool, classes ...Class) (c Classifier) {
 	}
 	// create the classifier
 	c = Classifier{
-		Classes:     classes,
-		datas:       make(map[Class]classData, n),
-		tfIdf:       true,
-		EqualPriors: equalPriors,
+		Classes: classes,
+		datas:   make(map[Class]classData, n),
+		tfIdf:   true,
 	}
 	for _, class := range classes {
 		c.datas[class] = newClassData()
@@ -198,7 +197,7 @@ func NewClassifierTfIdf(equalPriors bool, classes ...Class) (c Classifier) {
 // NewClassifier returns a new classifier. The classes provided
 // should be at least 2 in number and unique, or this method will
 // panic.
-func NewClassifier(equalPriors bool, classes ...Class) (c Classifier) {
+func NewClassifier(classes ...Class) (c Classifier) {
 	n := len(classes)
 
 	// check size
@@ -220,7 +219,6 @@ func NewClassifier(equalPriors bool, classes ...Class) (c Classifier) {
 		datas:           make(map[Class]classData, n),
 		tfIdf:           false,
 		DidConvertTfIdf: false,
-		EqualPriors:     equalPriors,
 	}
 	for _, class := range classes {
 		c.datas[class] = newClassData()
