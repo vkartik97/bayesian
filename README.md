@@ -35,6 +35,7 @@ See the GoPkgDoc documentation [here](https://godoc.org/github.com/jbrukh/bayesi
 - Simple persistence of classifiers.
 - Statistics.
 - TF-IDF support.
+- Select prior values for classes to be either equal for all classes, or to be dependent on the length of the training data.
 
 ------------
 
@@ -84,7 +85,7 @@ import . "bayesian"
 
 const (
     Good Class = "Good"
-    Bad Class = "Bad"
+    Bad Class = "Bad" 
 )
 
 // Create a classifier with TF-IDF support.

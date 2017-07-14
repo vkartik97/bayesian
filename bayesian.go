@@ -91,6 +91,7 @@ type Classifier struct {
 	tfIdf           bool
 	DidConvertTfIdf bool // we can't classify a TF-IDF classifier if we haven't yet
 	// called ConverTermsFreqToTfIdf
+	EqualPriors bool // should priors be equal for all classes or based on the training data.
 }
 
 // serializableClassifier represents a container for
@@ -103,6 +104,7 @@ type serializableClassifier struct {
 	Datas           map[Class]classData
 	TfIdf           bool
 	DidConvertTfIdf bool
+	EqualPriors     bool
 }
 
 // classData holds the frequency data for words in a
@@ -241,7 +243,7 @@ func NewClassifierFromReader(r io.Reader) (c Classifier, err error) {
 	w := new(serializableClassifier)
 	err = dec.Decode(w)
 
-	return Classifier{w.Classes, w.Learned, int32(w.Seen), w.Datas, w.TfIdf, w.DidConvertTfIdf}, err
+	return Classifier{w.Classes, w.Learned, int32(w.Seen), w.Datas, w.TfIdf, w.DidConvertTfIdf, w.EqualPriors}, err
 }
 
 func (c *Classifier) cloned() {
@@ -261,17 +263,24 @@ func (c *Classifier) cloned() {
 func (c Classifier) getPriors() (priors []float64) {
 	n := len(c.Classes)
 	priors = make([]float64, n, n)
-	sum := 0
-	for index, class := range c.Classes {
-		total := c.datas[class].Total
-		priors[index] = float64(total)
-		sum += total
-	}
-	if sum != 0 {
-		for i := 0; i < n; i++ {
-			priors[i] /= float64(sum)
+	if c.EqualPriors {
+		for i := range priors {
+			priors[i] = 1 / float64(n)
+		}
+	} else {
+		sum := 0
+		for index, class := range c.Classes {
+			total := c.datas[class].Total
+			priors[index] = float64(total)
+			sum += total
+		}
+		if sum != 0 {
+			for i := 0; i < n; i++ {
+				priors[i] /= float64(sum)
+			}
 		}
 	}
+
 	return
 }
 
@@ -583,7 +592,7 @@ func (c Classifier) WriteClassToFile(name Class, rootPath string) (err error) {
 // WriteTo serializes this classifier to GOB and write to Writer.
 func (c Classifier) WriteTo(w io.Writer) (err error) {
 	enc := gob.NewEncoder(w)
-	err = enc.Encode(&serializableClassifier{c.Classes, c.learned, int(c.seen), c.datas, c.tfIdf, c.DidConvertTfIdf})
+	err = enc.Encode(&serializableClassifier{c.Classes, c.learned, int(c.seen), c.datas, c.tfIdf, c.DidConvertTfIdf, c.EqualPriors})
 
 	return
 }
