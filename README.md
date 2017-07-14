@@ -35,7 +35,7 @@ See the GoPkgDoc documentation [here](https://godoc.org/github.com/jbrukh/bayesi
 - Simple persistence of classifiers.
 - Statistics.
 - TF-IDF support.
-- Select prior values for classes to be either equal for all classes or to be dependant on length of traning data.
+- Select prior values for classes to be either equal for all classes, or to be dependent on the length of the training data.
 
 ------------
 
