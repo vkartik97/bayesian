@@ -608,6 +608,18 @@ func (c Classifier) Reader() io.Reader {
 	return r
 }
 
+// TFIDFs returns all terms and their corresponding TF-IDF.
+func (c Classifier) TFIDFs() map[string]float64 {
+	ret := make(map[string]float64)
+	for _, class := range c.Classes {
+		for w, tfidf := range c.datas[class].Freqs {
+			ret[w] = tfidf
+		}
+	}
+
+	return ret
+}
+
 // ReadClassFromFile loads existing class data from a
 // file.
 func (c Classifier) ReadClassFromFile(class Class, location string) (Classifier, error) {
