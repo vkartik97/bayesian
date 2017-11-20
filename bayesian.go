@@ -597,6 +597,17 @@ func (c Classifier) WriteTo(w io.Writer) (err error) {
 	return
 }
 
+// Reader of the entire classifier so as to be persistable
+func (c Classifier) Reader() (io.Reader, error) {
+	r, w := io.Pipe()
+	go func() {
+		c.WriteTo(w)
+		w.Close()
+	}()
+
+	return r, nil
+}
+
 // ReadClassFromFile loads existing class data from a
 // file.
 func (c Classifier) ReadClassFromFile(class Class, location string) (Classifier, error) {
