@@ -446,7 +446,7 @@ func (c Classifier) LogScores(document []string) (scores []float64, inx int, str
 // never seen before. Depending on the application, this
 // may or may not be a concern. Consider using SafeProbScores()
 // instead.
-func (c Classifier) ProbScores(doc []string) (scores []float64, inx int, strict bool) {
+func (c Classifier) ProbScores(doc []string) (scores []float64, inx int, strict bool, threshold float64) {
 	if c.tfIdf && !c.DidConvertTfIdf {
 		panic("Using a TF-IDF classifier. Please call ConvertTermsFreqToTfIdf before calling ProbScores.")
 	}
@@ -471,7 +471,8 @@ func (c Classifier) ProbScores(doc []string) (scores []float64, inx int, strict 
 	}
 	inx, strict = findMax(scores)
 	atomic.AddInt32(&c.seen, 1)
-	return scores, inx, strict
+	threshold = c.Thresholder(len(scores))
+	return scores, inx, strict, threshold
 }
 
 // SafeProbScores works the same as ProbScores, but is
@@ -656,4 +657,9 @@ func findMax(scores []float64) (inx int, strict bool) {
 		}
 	}
 	return
+}
+
+// Thresholder computes the minimum Threshold for ProbScore()
+func (c Classifier) Thresholder(n int)(float64) {
+	return 0.7+(0.4/(math.Pow(2, float64(n)/1.5)))
 }
